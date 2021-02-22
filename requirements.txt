@@ -1,0 +1,9 @@
+# Programming
+tqdm
+
+# Preprocess data
+Pillow
+pytesseract
+
+# Deep learning
+tensorflow
