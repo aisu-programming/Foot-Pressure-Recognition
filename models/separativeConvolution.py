@@ -1,5 +1,4 @@
-train_ignoring   = [ 67,  83, 170, 171, 235, 245, 313, 373, 404, 410, 478, 589, 600, 609, 625, 637, 649, 656, 662, 685, 749, 751, 797, 801, 826, 872, 891, 933, 953, 980]
-test_malfunction = [ 91,  95, 111, 153]
+
 
 # foot_front = None
 # heel_point = None
@@ -9,11 +8,38 @@ test_malfunction = [ 91,  95, 111, 153]
 
 ''' Libraries '''
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import ZeroPadding2D, Conv2D, MaxPooling2D, Reshape, Bidirectional, LSTM, Dense
+from tensorflow.keras.layers import Layer, ZeroPadding2D, Conv2D, MaxPooling2D, Reshape, Bidirectional, LSTM, Dense
 
 
 ''' Functions '''
-def ConvolutionModel():
+class CustomizedConvolution(Layer):
+    def __init__(self, units, **kwargs):
+        super(CustomizedConvolution, self).__init__(**kwargs)
+        self.units = units
+
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({
+            'units': self.units,
+        })
+        return config
+
+    def build(self, input_shape):
+        self.layers = [
+            Conv1D(filters=self.units, kernel_size=3, activation='relu'), 
+            ZeroPadding1D(padding=(1, 1)), 
+            Dropout(0.2), 
+            Conv1D(filters=self.units, kernel_size=3), 
+            ZeroPadding1D(padding=(1, 1)), 
+        ]
+
+    def call(self, inputs):
+        x = inputs
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
+def separativeConvolution():
     model = Sequential()
     model.add(ZeroPadding2D(padding=1, input_shape=(316, 102, 3)))
     model.add(Conv2D(16, 3, activation='relu'))
@@ -46,4 +72,4 @@ def ConvolutionModel():
 
 ''' Execution '''
 if __name__ == "__main__":
-    ConvolutionModel()
+    CustomizedConvolution()

@@ -2,8 +2,9 @@
 tqdm
 
 # Preprocess data
-Pillow
-pytesseract
+pillow
+# pytesseract
+pandas
 
 # Deep learning
 tensorflow
