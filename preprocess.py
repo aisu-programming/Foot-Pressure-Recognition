@@ -3,8 +3,6 @@ import os
 from tqdm import tqdm
 import math
 from PIL import Image, ImageFilter
-# import pytesseract
-# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 import pandas as pd
 
 
@@ -20,7 +18,7 @@ def process_image(image_directory, image_name, image_index):
     image_pixel = original_image.load()
 
     if not os.path.exists(r"test/1"): os.makedirs(r"test/1")
-    # original_image.save(f'test/1/{image_name[:-4]}.png')
+    original_image.save(f'test/1/image_{image_index:04d}_original.png')
 
     left = 120
     for h in range(height):
@@ -62,23 +60,8 @@ def process_image(image_directory, image_name, image_index):
             else: image_pixel[w, h] = (255, 255, 255)
     adjusted_contour_sharpen_image.save(f'test/1/image_{image_index:04d}_adjusted_contour_sharpen.png')
 
-    # for w in range(6):
-    #     for h in range(19):
-    #         left   = math.floor(102 * (w / 6.0))
-    #         right  = math.ceil(102 * ((w+1) / 6.0))
-    #         top    = math.floor((316+7) * (h / 19.0))
-    #         bottom = top + 10
-    #         specific_image = adjusted_sharpen_contour_image.crop((left, top, right, bottom))
-    #         specific_image = specific_image.filter(ImageFilter.CONTOUR)
-    #         specific_image.save(f'test/cropped_images/{image_name[:-4]}/x{w}_y{h:02d}.png')
-    #         print(w, h, pytesseract.image_to_string(specific_image, config='--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789'))
 
-
-# def recognize_numbers(image_directory, image_name):
-#     print(pytesseract.image_to_string(Image.open(f"{image_directory}/{image_name}")))
-
-
-def process_csv(csv_file_path_1, csv_file_path_2):
+def combine_csv(csv_file_path_1, csv_file_path_2):
     csv_file_1 = pd.read_csv(csv_file_path_1)
     csv_file_2 = pd.read_csv(csv_file_path_2)
     output_csv_file = pd.concat([csv_file_1, csv_file_2], ignore_index=True)
@@ -92,23 +75,17 @@ if __name__ == '__main__':
 
     os.system('cls')
 
-    # image_directory = r"downloaded_data/train/images"
-    # image_name_list = os.listdir(image_directory)
-    # for index, image_name in tqdm(enumerate(image_name_list), desc=f"Cropping images: {image_directory}", ascii=True):
-    #    process_image(image_directory, image_name, index+1)
+    image_directory = r"downloaded_data/train/images"
+    image_name_list = os.listdir(image_directory)
+    for index, image_name in tqdm(enumerate(image_name_list), desc=f"Processing images: {image_directory}", ascii=True):
+       process_image(image_directory, image_name, index+1)
 
-    # image_directory = r"downloaded_data/train_20210106/images"
-    # image_name_list = os.listdir(image_directory)
-    # for index, image_name in tqdm(enumerate(image_name_list), desc=f"Cropping images: {image_directory}", ascii=True):
-    #    process_image(image_directory, image_name, index+1+1000)
+    image_directory = r"downloaded_data/train_20210106/images"
+    image_name_list = os.listdir(image_directory)
+    for index, image_name in tqdm(enumerate(image_name_list), desc=f"Processing images: {image_directory}", ascii=True):
+       process_image(image_directory, image_name, index+1+1000)
 
     csv_file_path_1 = r"downloaded_data/train/annotation.csv"
     csv_file_path_2 = r"downloaded_data/train_20210106/annotation.csv"
-    process_csv(csv_file_path_1, csv_file_path_2)
-
-    # image_directory = "test/cropped_images"
-    # image_name_list = os.listdir(image_directory)
-    # for image_name in tqdm(image_name_list, desc=f"Recognizing images' numbers", ascii=True):
-    #    recognize_numbers(image_directory, image_name)
-    #    continue
-    # recognize_numbers(image_directory, 'image_0001.png')
+    print("Combining annotation files.")
+    combine_csv(csv_file_path_1, csv_file_path_2)

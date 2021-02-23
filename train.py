@@ -15,10 +15,12 @@ test_malfunction = [ 91,  95, 111, 153]
 
 ''' Functions '''
 def read_data():
+    print('')
 
     X = []
     for i in tqdm(range(1, 1425, 1), desc=f"Reading images", ascii=True):
         if i in train_ignoring: continue
+        original_image                 = np.array(Image.open(f"test/1/image_{i:04d}_original.png"))
         cropped_image                  = np.array(Image.open(f"test/1/image_{i:04d}_cropped.png"))
         edges_image                    = np.array(Image.open(f"test/1/image_{i:04d}_edges.png"))
         detail_image                   = np.array(Image.open(f"test/1/image_{i:04d}_detail.png"))
@@ -26,13 +28,13 @@ def read_data():
         contour_image                  = np.array(Image.open(f"test/1/image_{i:04d}_contour.png"))
         contour_sharpen_image          = np.array(Image.open(f"test/1/image_{i:04d}_contour_sharpen.png"))
         adjusted_contour_sharpen_image = np.array(Image.open(f"test/1/image_{i:04d}_adjusted_contour_sharpen.png"))
-        input_images = [
-            cropped_image, edges_image, detail_image, sharpen_image, contour_image,
-            contour_sharpen_image, adjusted_contour_sharpen_image,
-        ]
-        mingle_images = np.empty((316, 102, 0))
-        for array in input_images:
-            mingle_images = np.concatenate([mingle_images, array], axis=2)
+        # mingle_images = np.concatenate([
+        #     cropped_image, edges_image, detail_image, sharpen_image, contour_image,
+        #     contour_sharpen_image, adjusted_contour_sharpen_image
+        # ], axis=2)
+        mingle_images = np.concatenate([
+            cropped_image, edges_image, contour_image,
+        ], axis=2)
         X.append(mingle_images)
     X = np.array(X)
 
@@ -40,12 +42,17 @@ def read_data():
     Y = pd.read_csv(r"test/1/annotation.csv", index_col=0).values
     Y = np.array([ answer for index, answer in enumerate(Y, start=1) if index not in train_ignoring ])
 
+    print('')
     return X, Y
 
 
 ''' Execution '''
 if __name__ == '__main__':
     os.system('cls')
+    
     X, Y = read_data()
-    model = mingleConvoluntion(image_amount=7)
-    model.fit(X, Y, batch_size=40, epochs=500, validation_split=0.3)
+    
+    model = mingleConvoluntion(image_amount=3)
+
+    ES = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3)
+    model.fit(X, Y, batch_size=1, epochs=500, validation_split=0.3)

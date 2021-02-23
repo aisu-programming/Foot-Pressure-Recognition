@@ -3,7 +3,6 @@ tqdm
 
 # Preprocess data
 pillow
-# pytesseract
 pandas
 
 # Deep learning
