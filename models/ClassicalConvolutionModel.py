@@ -6,7 +6,7 @@ from tensorflow.keras.layers import ZeroPadding2D, Conv2D, MaxPooling2D, Flatten
 
 
 ''' Functions '''
-def ClassicalConvoluntionModel(image_amount):
+def ClassicalConvolutionModel(image_amount):
     channel = image_amount * 3
     
     model = Sequential()
@@ -37,7 +37,7 @@ def ClassicalConvoluntionModel(image_amount):
     model.add(Dense(15, activation='relu'))
     model.add(Dense(4))
     model.compile(loss="mean_absolute_percentage_error", optimizer="adam")
-
+    
     print('')
     model.summary()
     print('')
@@ -47,4 +47,4 @@ def ClassicalConvoluntionModel(image_amount):
 ''' Execution '''
 if __name__ == '__main__':
     os.system('cls')
-    ClassicalConvoluntionModel(image_amount=7)
+    ClassicalConvolutionModel(image_amount=7)

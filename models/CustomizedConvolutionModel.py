@@ -1,5 +1,3 @@
-
-
 # foot_front = None
 # heel_point = None
 
@@ -7,38 +5,45 @@
 # 0 ~ 180 psi
 
 ''' Libraries '''
+from tensorflow.keras import Model
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Layer, ZeroPadding2D, Conv2D, MaxPooling2D, Flatten, Dense
 
 
 ''' Functions '''
-class CroppedConvolution(Layer):
-    def __init__(self, units, shape, **kwargs):
-        super(CustomizedLayer, self).__init__(**kwargs)
-        self.units = units
-        self.shape = shape
+class OverallConvolutionBlock(Layer):
+    def __init__(self, units, raw_size=False, **kwargs):
+        super(OverallConvolution, self).__init__(**kwargs)
+        self.units    = units
+        self.raw_size = raw_size
 
     def get_config(self):
         config = super().get_config().copy()
         config.update({
-            'units': self.units,
-            'shape': self.shape,
+            'units'   : self.units,
+            'raw_size': self.raw_size,
         })
         return config
 
     def build(self):
-        self.layers = [
-            Conv2D(12, 3, activation='relu'),
-            Conv2D(12, 3, activation='relu'),
-            Conv2D(12, 3, activation='relu'),
+        if self.raw_size:
+            self.layers = [
+                Conv2D(6, (7, 29), activation='relu'),  # -6/-28
+                Conv2D(6, (7, 29), activation='relu'),  # -6/-28
+                Conv2D(6, (7, 29), activation='relu'),  # -6/-28
+            ]
+
+        for layer in [
+            Conv2D(6, (3, 5), activation='relu'),
+            Conv2D(6, (3, 6), activation='relu'),
+            Conv2D(6, (3, 6), activation='relu'),
             MaxPooling2D(pool_size=(2, 2)),
-            Conv2D(24, 3, activation='relu'),
-            Conv2D(24, 3, activation='relu'),
-            Conv2D(24, 3, activation='relu'),
+            Conv2D(12, (3, 6), activation='relu'),
+            Conv2D(12, (3, 7), activation='relu'),
             MaxPooling2D(pool_size=(2, 2)),
-            Conv2D(48, 3, activation='relu'),
-            Conv2D(48, 3, activation='relu'),
-            Conv2D(48, 3, activation='relu'),
+            Conv2D(24, (3, 7), activation='relu'),
+            Conv2D(24, (3, 7), activation='relu'),
+            Conv2D(24, (3, 7), activation='relu'),
             MaxPooling2D(pool_size=(2, 2)),
             Flatten(),
             Dropout(0.2),
@@ -51,12 +56,41 @@ class CroppedConvolution(Layer):
             Dense(50, activation='sigmoid'),
             Dense(30, activation='relu'),
             Dense(30, activation='sigmoid'),
-        ]
+        ]: self.layers.append(layer)
+
+    def call(self, inputs):
+        x = inputs
+        for layer in self.layers:
+            x = layer(x)
+        return x
 
 
-class CustomizedLayer(Layer):
+class SegmentaryConvolution(Layer):
+    def __init__(self, units, **kwargs):
+        super(OverallConvolution, self).__init__(**kwargs)
+        self.units = units
+
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({
+            'units': self.units,
+        })
+        return config
+
+    def build(self):
+        self.layers = [[
+            
+        ] * 6 ] * 19
+        
+    def call(self, inputs):
+        pieces = inputs
+        for index, piece in enumerate(pieces):
+            self
+
+
+class CustomizedConvolution(Model):
     def __init__(self, units=1, images=[], original=False, **kwargs):
-        super(CustomizedLayer, self).__init__(**kwargs)
+        super(CustomizedConvolution, self).__init__(**kwargs)
         self.units    = units
         self.images   = images
         self.original = original
@@ -71,17 +105,8 @@ class CustomizedLayer(Layer):
         return config
 
     def build(self):
-
-        layers_for_cropped = [
-            
-        ]
-
         # 120*400 -> 102*316 (-18/-84)
         layers_for_raw_size = [
-            Conv2D(6, (7, 57), activation='relu'),  # -6/-28
-            Conv2D(6, (7, 57), activation='relu'),  # -6/-28
-            Conv2D(6, (7, 57), activation='relu'),  # -6/-28
-            Dropout(0.2),
             layer for layer in layers_for_cropped
         ]
 

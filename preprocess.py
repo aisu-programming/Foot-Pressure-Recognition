@@ -74,17 +74,6 @@ def process_image(image_directory, image_name, image_index):
     #         else: image_pixel[w, h] = (255, 255, 255)
     # adjusted_contour_sharpen_image.save(f'test/1/image_{image_index:04d}_adjusted_contour_sharpen.png')
 
-    # # pieces
-    # for w in range(6):
-    #     for h in range(19):
-    #         left   = math.floor(102 * (w / 6.0))
-    #         right  = math.ceil(102 * ((w+1) / 6.0))
-    #         top    = math.floor((316+7) * (h / 19.0))
-    #         bottom = top + 10
-    #         specific_image = cropped_image.crop((left, top, right, bottom))
-    #         specific_image = specific_image.filter(ImageFilter.CONTOUR)
-    #         specific_image.save(f'test/1/image_{image_index:04d}_{w}_{h:02d}.png')
-
 
 def combine_csv(csv_file_path_1, csv_file_path_2):
     csv_file_1 = pd.read_csv(csv_file_path_1)
