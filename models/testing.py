@@ -5,6 +5,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import ZeroPadding2D, Conv2D, MaxPooling2D, Flatten, Dropout, Dense
 
 from ClassicalConvolutionModel import ClassicalConvolutionModel
+from CustomizedConvolutionModel import OverallConvolutionBlock, SegmentaryConvolutionBlock, CustomizedConvolutionModel
 
 
 ''' Functions '''
@@ -14,40 +15,28 @@ def test_ClassicalConvoluntionModel():
     model.summary()
 
 
-def test_OverallConvoluntionBlock():
+def test_OverallConvolutionBlock():
     model = Sequential()
-    
-    # model.add(Input(shape=(120, 400, 3)))
-    # model.add(Conv2D(6, (7, 29), activation='relu'))
-    # model.add(Conv2D(6, (7, 29), activation='relu'))
-    # model.add(Conv2D(6, (7, 29), activation='relu'))
-
-    model.add(Input(shape=(102, 316, 3)))
-    model.add(Conv2D(6, (3, 2), activation='relu'))
-    model.add(Conv2D(6, (3, 2), activation='relu'))
-    model.add(Conv2D(6, (3, 2), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(12, (3, 2), activation='relu'))
-    model.add(Conv2D(12, (3, 2), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(24, 3, activation='relu'))
-    model.add(Conv2D(24, 3, activation='relu'))
-    model.add(Conv2D(24, 3, activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 3)))
-    model.add(Flatten())
+    model.add(Input(shape=(120, 400, 3)))
+    model.add(OverallConvolutionBlock(1, wide=[9, 27, 81], dropout=0.1))
+    model.compile(loss="mean_absolute_percentage_error", optimizer="adam")
     print('')
     model.summary()
 
 
 def test_SegmentaryConvolutionBlock():
     model = Sequential()
-    model.add(Input(shape=(17, 10, 3)))
-    model.add(Conv2D(6, 3, activation='relu'))
-    model.add(Conv2D(6, 3, activation='relu'))
-    model.add(Conv2D(12, 3, activation='relu'))
-    model.add(Conv2D(12, 3, activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Flatten())
+    model.add(Input(shape=(6, 19, 17, 10, 3)))
+    model.add(SegmentaryConvolutionBlock(1, dropout=0.1))
+    model.compile(loss="mean_absolute_percentage_error", optimizer="adam")
+    print('')
+    model.summary()
+
+
+def test_CustomizedConvolutionModel():
+    model = CustomizedConvolutionModel()
+    model.compile(loss="mean_absolute_percentage_error", optimizer="adam")
+    model.build()
     print('')
     model.summary()
 
@@ -55,6 +44,4 @@ def test_SegmentaryConvolutionBlock():
 ''' Execution '''
 if __name__ == '__main__':
     os.system('cls')
-    # test_ClassicalConvoluntionModel()
-    test_OverallConvoluntionBlock()
-    test_SegmentaryConvolutionBlock()
+    test_CustomizedConvolutionModel()

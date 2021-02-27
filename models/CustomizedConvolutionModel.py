@@ -4,59 +4,43 @@
 # 19 * 6
 # 0 ~ 180 psi
 
+# 1 4 1 4 1 1 4 1 (17)
+
 ''' Libraries '''
+import numpy as np
+import tensorflow as tf
 from tensorflow.keras import Model
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Layer, ZeroPadding2D, Conv2D, MaxPooling2D, Flatten, Dense
+from tensorflow.keras.layers import Layer, Conv2D, MaxPooling2D, Dropout, Flatten, ZeroPadding2D, Dense
 
 
 ''' Functions '''
 class OverallConvolutionBlock(Layer):
-    def __init__(self, units, raw_size=False, **kwargs):
-        super(OverallConvolution, self).__init__(**kwargs)
-        self.units    = units
-        self.raw_size = raw_size
+    def __init__(self, units, conv=2, wide=[6, 12, 24], dropout=0.0, **kwargs):
+        super(OverallConvolutionBlock, self).__init__(**kwargs)
+        self.units   = units
+        self.conv    = conv
+        self.wide    = wide
+        self.dropout = dropout
 
     def get_config(self):
         config = super().get_config().copy()
         config.update({
-            'units'   : self.units,
-            'raw_size': self.raw_size,
+            'units'  : self.units,
+            'conv'   : self.conv,
+            'wide'   : self.wide,
+            'dropout': self.dropout,
         })
         return config
 
-    def build(self):
-        if self.raw_size:
-            self.layers = [
-                Conv2D(6, (7, 29), activation='relu'),  # -6/-28
-                Conv2D(6, (7, 29), activation='relu'),  # -6/-28
-                Conv2D(6, (7, 29), activation='relu'),  # -6/-28
-            ]
-
-        for layer in [
-            Conv2D(6, (3, 5), activation='relu'),
-            Conv2D(6, (3, 6), activation='relu'),
-            Conv2D(6, (3, 6), activation='relu'),
-            MaxPooling2D(pool_size=(2, 2)),
-            Conv2D(12, (3, 6), activation='relu'),
-            Conv2D(12, (3, 7), activation='relu'),
-            MaxPooling2D(pool_size=(2, 2)),
-            Conv2D(24, (3, 7), activation='relu'),
-            Conv2D(24, (3, 7), activation='relu'),
-            Conv2D(24, (3, 7), activation='relu'),
-            MaxPooling2D(pool_size=(2, 2)),
-            Flatten(),
-            Dropout(0.2),
-            Dense(200, activation='relu'),
-            Dense(200, activation='sigmoid'),
-            Dense(100, activation='relu'),
-            Dense(100, activation='sigmoid'),
-            Dropout(0.2),
-            Dense(50, activation='relu'),
-            Dense(50, activation='sigmoid'),
-            Dense(30, activation='relu'),
-            Dense(30, activation='sigmoid'),
-        ]: self.layers.append(layer)
+    def build(self, input_shape):
+        self.layers = []
+        for i in range(len(self.wide)):
+            for _ in range(self.conv):
+                self.layers.append(Conv2D(self.wide[i], 3, padding='same', activation='relu'))
+            self.layers.append(MaxPooling2D(pool_size=(2, 2)))
+            self.layers.append(Dropout(self.dropout))
+        self.layers.append(Flatten())
 
     def call(self, inputs):
         x = inputs
@@ -65,89 +49,80 @@ class OverallConvolutionBlock(Layer):
         return x
 
 
-class SegmentaryConvolution(Layer):
-    def __init__(self, units, **kwargs):
-        super(OverallConvolution, self).__init__(**kwargs)
-        self.units = units
+class SegmentaryConvolutionBlock(Layer):
+    def __init__(self, units, conv=2, wide=6, dropout=0.0, **kwargs):
+        super(SegmentaryConvolutionBlock, self).__init__(**kwargs)
+        self.units   = units
+        self.conv    = conv
+        self.wide    = wide
+        self.dropout = dropout
 
     def get_config(self):
         config = super().get_config().copy()
         config.update({
-            'units': self.units,
+            'units'  : self.units,
+            'conv'   : self.conv,
+            'wide'   : self.wide,
+            'dropout': self.dropout,
         })
         return config
 
-    def build(self):
-        self.layers = [[
-            
-        ] * 6 ] * 19
+    def build(self, input_shape):
+        
+        number_block = []
+        for _ in range(self.conv):
+            number_block.append(Conv2D(self.wide, 3, padding='same', activation='relu'))
+        number_block.append(MaxPooling2D(pool_size=(2, 2)))
+        number_block.append(Dropout(self.dropout))
+
+        segmentation_block = [ ZeroPadding2D(padding=((0, 1), (0, 0))) ]
+        for layer in number_block:
+            segmentation_block.append(layer)
+
+        self.blocks = [ [
+            [ segmentation_block, number_block, number_block, number_block ]
+        ] * 19 ] * 6
         
     def call(self, inputs):
-        pieces = inputs
-        for index, piece in enumerate(pieces):
-            self
+        x = inputs
+        output = []
+        for i in range(6):
+            output_tmp = []
+            for j in range(19):
+                segmentation = x[:, i, j]
+                number_1     = segmentation[:,  0: 6, :, :]
+                number_2     = segmentation[:,  5:11, :, :]
+                number_3     = segmentation[:, 11:17, :, :]
+                for layer in self.blocks[i][j][0]: segmentation = layer(segmentation)
+                for layer in self.blocks[i][j][1]: number_1     = layer(number_1)
+                for layer in self.blocks[i][j][2]: number_2     = layer(number_2)
+                for layer in self.blocks[i][j][3]: number_3     = layer(number_3)
+                numbers = tf.concat([ number_1, number_2, number_3 ], axis=1)
+                output_tmp.append(Flatten()(tf.concat([ segmentation, numbers ], axis=2)))
+            output.append(tf.concat([ row for row in output_tmp ], axis=1))
+        return tf.concat([ row for row in output ], axis=1)
 
 
-class CustomizedConvolution(Model):
-    def __init__(self, units=1, images=[], original=False, **kwargs):
-        super(CustomizedConvolution, self).__init__(**kwargs)
-        self.units    = units
-        self.images   = images
-        self.original = original
-
-    def get_config(self):
-        config = super().get_config().copy()
-        config.update({
-            'units'   : self.units,
-            'images'  : self.images,
-            'original': self.original,
-        })
-        return config
-
-    def build(self):
-        # 120*400 -> 102*316 (-18/-84)
-        layers_for_raw_size = [
-            layer for layer in layers_for_cropped
-        ]
-
-        if original:
-            self.layers = [
-                layers_for_raw_size, layers_for_raw_size, 
-                layers_for_cropped for _ in range(len(self.images)-2)
-            ]
-        else:
-            self.layers = [
-                layers_for_raw_size, 
-                layers_for_cropped for _ in range(len(self.images-1))
-            ]
+class CustomizedConvolutionModel(Model):
+    def __init__(self):
+        super(CustomizedConvolutionModel, self).__init__()
+        self.blocks = []
+        for _ in range(7):
+            self.blocks.append(OverallConvolutionBlock(1, wide=[9, 27, 81], dropout=0.2))
+        for _ in range(5):
+            self.blocks.append(SegmentaryConvolutionBlock(1, wide=6, dropout=0.2))
 
     def call(self, inputs):
-        x = inputs
-        for layer in self.layers:
-            x = layer(x)
-        return x
-
-
-def separativeConvolution(image_amount):
-    channel = image_amount * 3
-
-    model = Sequential()
-    model.add(Input(shape=(316, 102, channel)))
-
-    model.add(CustomizedLayer())
-    model.add(Dense(100, activation='relu'))
-    model.add(Dense(100, activation='sigmoid'))
-    model.add(Dense(30, activation='relu'))
-    model.add(Dense(30, activation='sigmoid'))
-    model.add(Dense(4))
-    model.compile(loss="mean_absolute_percentage_error", optimizer="adam")
-
-    print('')
-    model.summary()
-    print('')
-    return model
+        images = inputs
+        for index in range(len(images)):
+            images[index] = self.blocks[index](images[index])
+        return images
 
 
 ''' Execution '''
 if __name__ == "__main__":
-    CustomizedConvolution()
+    model = CustomizedConvolutionModel()
+    model.compile(loss="mean_absolute_percentage_error", optimizer="adam")
+    model.build()
+    print('')
+    model.summary()

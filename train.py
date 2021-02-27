@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from models.ClassicalConvolutionModel import ClassicalConvolutionModel
+from models.CustomizedConvolutionModel import CustomizedConvolutionModel
 
 
 ''' Parameters '''
@@ -20,12 +21,14 @@ TEST_MALFUNCTION = [ 91,  95, 111, 153]
 def segment_image(image):
     segmentations = []
     for w in range(6):
+        segmentation_row = []
         for h in range(19):
             left   = math.floor(102 * (w / 6.0))
             right  = math.ceil(102 * ((w+1) / 6.0))
             top    = math.floor((316+7) * (h / 19.0))
             bottom = top + 10
-            segmentations.append(image[top:bottom, left:right, :].shape)
+            segmentation_row.append(image[top:bottom, left:right, :])
+        segmentations.append(segmentation_row)
     return np.array(segmentations)
 
 
@@ -51,23 +54,22 @@ def read_data():
                 cropped_image, edges_image, sharpen_image, contour_image, contour_sharpen_image,
             ], axis=2))
         elif MODEL == 'CustomizedConvolutionModel':
-            X.append({
-                # OverallConvolution (raw_size)
-                'original'              : original_im,
-                'color'                 : color_im,
+            X.append([
                 # OverallConvolution
-                'cropped'               : cropped_im,
-                'edges'                 : edges_im,
-                'sharpen'               : sharpen_im,
-                'contour'               : contour_im,
-                'contour_sharpen'       : contour_sharpen_im,
+                original_im,
+                color_im,
+                cropped_im,
+                edges_im,
+                sharpen_im,
+                contour_im,
+                contour_sharpen_im,
                 # SegmentaryConvolution
-                'cropped_pieces'        : segment_image(cropped_im),  
-                'edges_pieces'          : segment_image(edges_im),
-                'sharpen_pieces'        : segment_image(sharpen_im),
-                'contour_pieces'        : segment_image(contour_im),
-                'contour_sharpen_pieces': segment_image(contour_sharpen_im),
-            })
+                segment_image(cropped_im),  
+                segment_image(edges_im),
+                segment_image(sharpen_im),
+                segment_image(contour_im),
+                segment_image(contour_sharpen_im),
+            ])
 
     X = np.array(X)
 
@@ -83,7 +85,8 @@ def read_data():
 if __name__ == '__main__':
     os.system('cls')
     
-    # model = ClassicalConvolutionModel(image_amount=5)
+    model = CustomizedConvolutionModel()
+    model.compile(loss="mean_absolute_percentage_error", optimizer="adam")
     
     X, Y = read_data()
 
