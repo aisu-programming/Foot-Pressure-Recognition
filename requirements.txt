@@ -1,5 +1,6 @@
 # Programming
 tqdm
+matplotlib
 
 # Preprocess data
 pillow

@@ -1,2 +1,4 @@
-test
+processed_data
 *.pyc
+*.h5
+.vscode

@@ -5,6 +5,7 @@ from tqdm import tqdm
 from PIL import Image
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 
 from models.ClassicalConvolutionModel import ClassicalConvolutionModel
 from models.CustomizedConvolutionModel import CustomizedConvolutionModel
@@ -28,7 +29,7 @@ def segment_image(image):
             top    = math.floor((316+7) * (h / 19.0))
             bottom = top + 10
             segmentation_row.append(image[top:bottom, left:right, :])
-        segmentations.append(segmentation_row)
+        segmentations.append(np.array(segmentation_row))
     return np.array(segmentations)
 
 
@@ -39,42 +40,42 @@ def read_data():
     for i in tqdm(range(1, 1425, 1), desc=f"Reading images", ascii=True):
         if i in TRAIN_IGNORING: continue
 
-        original_im                 = np.array(Image.open(f"test/1/image_{i:04d}_original.png"))
-        color_im                    = np.array(Image.open(f"test/1/image_{i:04d}_color.png"))
-        cropped_im                  = np.array(Image.open(f"test/1/image_{i:04d}_cropped.png"))
-        edges_im                    = np.array(Image.open(f"test/1/image_{i:04d}_edges.png"))
-        # detail_im                   = np.array(Image.open(f"test/1/image_{i:04d}_detail.png"))
-        sharpen_im                  = np.array(Image.open(f"test/1/image_{i:04d}_sharpen.png"))
-        contour_im                  = np.array(Image.open(f"test/1/image_{i:04d}_contour.png"))
-        contour_sharpen_im          = np.array(Image.open(f"test/1/image_{i:04d}_contour_sharpen.png"))
-        # adjusted_contour_sharpen_im = np.array(Image.open(f"test/1/image_{i:04d}_adjusted_contour_sharpen.png"))
+        original_im                 = np.array(Image.open(f"processed_data/image_{i:04d}_original.png"))
+        color_im                    = np.array(Image.open(f"processed_data/image_{i:04d}_color.png"))
+        cropped_im                  = np.array(Image.open(f"processed_data/image_{i:04d}_cropped.png"))
+        edges_im                    = np.array(Image.open(f"processed_data/image_{i:04d}_edges.png"))
+        # detail_im                   = np.array(Image.open(f"processed_data/image_{i:04d}_detail.png"))
+        sharpen_im                  = np.array(Image.open(f"processed_data/image_{i:04d}_sharpen.png"))
+        contour_im                  = np.array(Image.open(f"processed_data/image_{i:04d}_contour.png"))
+        contour_sharpen_im          = np.array(Image.open(f"processed_data/image_{i:04d}_contour_sharpen.png"))
+        # adjusted_contour_sharpen_im = np.array(Image.open(f"processed_data/image_{i:04d}_adjusted_contour_sharpen.png"))
 
         if MODEL == 'ClassicalConvolutionModel':
             X.append(np.concatenate([
                 cropped_image, edges_image, sharpen_image, contour_image, contour_sharpen_image,
             ], axis=2))
         elif MODEL == 'CustomizedConvolutionModel':
-            X.append([
+            X.append({
                 # OverallConvolution
-                original_im,
-                color_im,
-                cropped_im,
-                edges_im,
-                sharpen_im,
-                contour_im,
-                contour_sharpen_im,
+                'original_im'       : original_im,
+                'color_im'          : color_im,
+                'cropped_im'        : cropped_im,
+                'edges_im'          : edges_im,
+                'sharpen_im'        : sharpen_im,
+                'contour_im'        : contour_im,
+                'contour_sharpen_im': contour_sharpen_im,
                 # SegmentaryConvolution
-                segment_image(cropped_im),  
-                segment_image(edges_im),
-                segment_image(sharpen_im),
-                segment_image(contour_im),
-                segment_image(contour_sharpen_im),
-            ])
+                'cropped_im_seg'        : segment_image(cropped_im),  
+                'edges_im_seg'          : segment_image(edges_im),
+                'sharpen_im_seg'        : segment_image(sharpen_im),
+                'contour_im_seg'        : segment_image(contour_im),
+                'contour_sharpen_im_seg': segment_image(contour_sharpen_im),
+            })
 
-    X = np.array(X)
+    X = np.array(X, dtype=object)
 
     print('Reading annotations.')
-    Y = pd.read_csv(r"test/1/annotation.csv", index_col=0).values
+    Y = pd.read_csv(r"processed_data/annotation.csv", index_col=0).values
     Y = np.array([ answer for index, answer in enumerate(Y, start=1) if index not in TRAIN_IGNORING ])
 
     print('')
