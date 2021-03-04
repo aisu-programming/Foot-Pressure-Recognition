@@ -20,15 +20,16 @@ def add_margin(pil_img, top, right, bottom, left, color):
     return result
 
 
-def process_image(image_directory, image_name, shift):
+def process_images(target, image_directory, image_name, shift):
 
     image_index = int(image_name[6:10]) + shift
-
-    if not os.path.exists(r"processed_data"): os.makedirs(r"processed_data")
+    
+    saving_directory = 'processed_train_data' if target == 'train' else 'processed_test_data'
+    if not os.path.exists(saving_directory): os.makedirs(saving_directory)
 
     # original image
     original_image = Image.open(f"{image_directory}/{image_name}")
-    original_image.save(f'processed_data/image_{image_index:04d}_original.png')
+    original_image.save(f'{saving_directory}/image_{image_index:04d}_original.png')
 
     # cropped image
     cropped_image = original_image
@@ -42,7 +43,7 @@ def process_image(image_directory, image_name, shift):
     #                                         top   right   bottom
     cropped_image = original_image.crop((left, 48, left+102, 364))
     cropped_image = add_margin(cropped_image, 42, 9, 42, 9, (0, 0, 0))
-    cropped_image.save(f'processed_data/image_{image_index:04d}_cropped.png')
+    cropped_image.save(f'{saving_directory}/image_{image_index:04d}_cropped.png')
 
     # color image
     color_image = original_image
@@ -52,7 +53,7 @@ def process_image(image_directory, image_name, shift):
             R, G, B = image_pixel[w, h]
             if R <= 175 and G <= 175 and B <= 175: image_pixel[w, h] = image_pixel[w, h-1]
     color_image = color_image.filter(ImageFilter.BLUR)
-    color_image.save(f'processed_data/image_{image_index:04d}_color.png')
+    color_image.save(f'{saving_directory}/image_{image_index:04d}_color.png')
 
 
 def combine_csv(csv_file_path_1, csv_file_path_2):
@@ -60,8 +61,8 @@ def combine_csv(csv_file_path_1, csv_file_path_2):
     csv_file_2 = pd.read_csv(csv_file_path_2)
     output_csv_file = pd.concat([csv_file_1, csv_file_2], ignore_index=True)
     output_csv_file = output_csv_file.drop('images', axis=1)
-    if not os.path.exists(r"processed_data"): os.makedirs(r"processed_data")
-    output_csv_file.to_csv(r"processed_data/annotation.csv")
+    if not os.path.exists('processed_train_data'): os.makedirs('processed_train_data')
+    output_csv_file.to_csv(r"processed_train_data/annotation.csv")
 
 
 ''' Execution '''
@@ -71,15 +72,20 @@ if __name__ == '__main__':
 
     image_directory = r"../downloaded_data/train/images"
     image_name_list = os.listdir(image_directory)
-    for image_name in tqdm(image_name_list, desc=f"Processing images: {image_directory}", ascii=True):
-       process_image(image_directory, image_name, 0)
+    for image_name in tqdm(image_name_list, desc=f"Processing training images: {image_directory}", ascii=True):
+       process_images('train', image_directory, image_name, 0)
 
     image_directory = r"../downloaded_data/train_20210106/images"
     image_name_list = os.listdir(image_directory)
-    for image_name in tqdm(image_name_list, desc=f"Processing images: {image_directory}", ascii=True):
-       process_image(image_directory, image_name, 1000)
+    for image_name in tqdm(image_name_list, desc=f"Processing training images: {image_directory}", ascii=True):
+       process_images('train', image_directory, image_name, 1000)
 
     csv_file_path_1 = r"../downloaded_data/train/annotation.csv"
     csv_file_path_2 = r"../downloaded_data/train_20210106/annotation.csv"
-    print("Combining annotation files.")
+    print("Combining training annotation files.")
     combine_csv(csv_file_path_1, csv_file_path_2)
+
+    image_directory = r"../downloaded_data/test/images"
+    image_name_list = os.listdir(image_directory)
+    for image_name in tqdm(image_name_list, desc=f"Processing testing images: {image_directory}", ascii=True):
+       process_images('test', image_directory, image_name, 0)

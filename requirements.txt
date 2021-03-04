@@ -7,4 +7,4 @@ pillow
 pandas
 
 # Deep learning
-tensorflow
+tensorflow==2.4.0

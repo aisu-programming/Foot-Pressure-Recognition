@@ -1,4 +1,6 @@
 processed_data
+processed_train_data
+processed_test_data
 *.pyc
 *.h5
 .vscode

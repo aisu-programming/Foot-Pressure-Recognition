@@ -9,6 +9,7 @@
 
 ''' Parameters '''
 PRINT_MAIN_STEP_TIME = False
+PRINT_CONVOLUTION_STEP_TIME = False
 
 
 ''' Libraries '''
@@ -25,9 +26,11 @@ import tensorflow as tf
 from tensorflow.keras import Model
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Layer, Conv2D, MaxPooling2D, Dropout, Flatten, ZeroPadding2D, Dense
+from tensorflow.keras.layers import Layer, BatchNormalization, Conv2D, MaxPooling2D, Dropout, Flatten, ZeroPadding2D, Dense
 
-physical_devices = tf.config.list_physical_devices('GPU') 
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
+physical_devices = tf.config.list_physical_devices('GPU')
+if len(physical_devices) != 0:
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 
 ''' Functions '''
@@ -57,9 +60,11 @@ class RawSizeConvolutionBlock(Layer):
             self.layers.append(MaxPooling2D(pool_size=(2, 2)))
             self.layers.append(Dropout(self.dropout))
         self.layers.append(Flatten())
+        self.layers.append(BatchNormalization(axis=-1))
         for dense in self.denses:
             self.layers.append(Dense(dense, activation='relu'))
         self.layers.append(Dropout(self.dropout))
+        self.layers.append(BatchNormalization(axis=-1))
 
     def call(self, inputs):
         # Input:              (BATCH_SIZE, 400, 120,  3)
@@ -100,16 +105,18 @@ class CroppedConvolutionBlock(Layer):
     def build(self, input_shape):
         self.layers = []
         for i in range(len(self.conv_units)):
-            if   i == 0: self.layers.append(ZeroPadding2D(padding=(0, 1)))
-            elif i == 1: self.layers.append(ZeroPadding2D(padding=(1, 0)))
+            if   i == 0: self.layers.append(ZeroPadding2D(padding=(0, 1)))  # (height, width)
+            elif i == 1: self.layers.append(ZeroPadding2D(padding=(1, 0)))  # (height, width)
             for _ in range(self.conv):
                 self.layers.append(Conv2D(self.conv_units[i], 3, padding='same', activation='relu'))
             self.layers.append(MaxPooling2D(pool_size=(2, 2)))
             self.layers.append(Dropout(self.dropout))
         self.layers.append(Flatten())
+        self.layers.append(BatchNormalization(axis=-1))
         for dense in self.denses:
             self.layers.append(Dense(dense, activation='relu'))
         self.layers.append(Dropout(self.dropout))
+        self.layers.append(BatchNormalization(axis=-1))
 
     def call(self, inputs):
         # Input:              (BATCH_SIZE, 316, 102,  3)
@@ -160,9 +167,11 @@ class SegmentaryConvolutionBlock(Layer):
         number_block.append(MaxPooling2D(pool_size=(2, 2)))
         number_block.append(Dropout(self.dropout))
         number_block.append(Flatten())
+        number_block.append(BatchNormalization(axis=-1))
         for dense in self.conv_denses:
             number_block.append(Dense(dense, activation='relu'))
         number_block.append(Dropout(self.dropout))
+        number_block.append(BatchNormalization(axis=-1))
         self.number_blocks = [ number_block, number_block, number_block ]
 
         # Build segmentation block
@@ -172,13 +181,16 @@ class SegmentaryConvolutionBlock(Layer):
         self.segmentation_block.append(MaxPooling2D(pool_size=(2, 2)))
         self.segmentation_block.append(Dropout(self.dropout))
         self.segmentation_block.append(Flatten())
+        self.segmentation_block.append(BatchNormalization(axis=-1))
         for dense in self.conv_denses:
             self.segmentation_block.append(Dense(dense, activation='relu'))
         self.segmentation_block.append(Dropout(self.dropout))
+        self.segmentation_block.append(BatchNormalization(axis=-1))
         
         # Build integrating block
         self.integrating_block = [ Dense(dense, activation='relu') for dense in self.integrating_denses ]
         self.integrating_block.append(Dropout(self.dropout))
+        self.segmentation_block.append(BatchNormalization(axis=-1))
         
     def call(self, inputs):
         x = inputs
@@ -211,6 +223,7 @@ class SegmentaryConvolutionBlock(Layer):
             for layer in self.number_blocks[2]: number_3 = layer(number_3)
             
             concatenation = tf.concat([ segmentation, number_1, number_2, number_3 ], axis=1)  # (114, 160)
+            # concatenation = segmentation  # (114, 30)
             for layer in self.integrating_block: concatenation = layer(concatenation)          # (114,  20)
             concatenation = tf.reshape(concatenation, [ 114 * self.integrating_denses[-1] ])   # (114 * 20) = (2280)
             output_batchs.append(concatenation)
@@ -230,22 +243,24 @@ class CustomizedConvolutionModel(Model):
                 conv=3, conv_units=[6, 12, 24], denses=[40, 300, 900, 1600, 2200], dropout=0.2))
         for _ in range(3):
             self.convolution_blocks.append(SegmentaryConvolutionBlock(
-                conv=3, conv_unit=9, conv_denses=[100, 80, 60, 40], integrating_denses=[130, 100, 70, 45, 20], dropout=0.2))
+                conv=3, conv_unit=9, conv_denses=[110, 80, 50], integrating_denses=[160, 110, 60, 20], dropout=0.2))
 
         self.normalizing_blocks = []
         for _ in range(8):
             self.normalizing_blocks.append([
                 Dense(1600, activation='relu'),
-                Dense(400, activation='relu'),
+                Dense(800, activation='relu'),
+                Dense(200, activation='relu'),
                 Dense(100, activation='relu'),
-                Dense(50, activation='relu'),
                 Dropout(0.2),
+                BatchNormalization(axis=-1),
             ])
         self.integrating_block = [ 
             Dense(800, activation='relu'),
             Dense(200, activation='relu'),
             Dense(50, activation='relu'),
             Dense(20, activation='relu'),
+            BatchNormalization(axis=-1),
             Dense(4, activation='relu'),
         ]
 
@@ -289,7 +304,7 @@ class CustomizedConvolutionModel(Model):
         cropped_im_seg = tf.dtypes.cast(self.__segment_image(cropped_im), tf.float32)
         sharpen_im_seg = tf.dtypes.cast(self.__segment_image(sharpen_im), tf.float32)
         contour_im_seg = tf.dtypes.cast(self.__segment_image(contour_im), tf.float32)
-        # print(cropped_im_seg)  # (BATCH_SIZE, 6, 19, 10, 17, 3)
+        # # print(cropped_im_seg)  # (BATCH_SIZE, 6, 19, 10, 17, 3)
 
         images = [
             original_im, color_im,                           # RawSizeConvolutionBlock
@@ -299,7 +314,9 @@ class CustomizedConvolutionModel(Model):
 
         if PRINT_MAIN_STEP_TIME: start = time.time()
         for index in range(len(images)):
+            if PRINT_CONVOLUTION_STEP_TIME: start = time.time()
             images[index] = self.convolution_blocks[index](images[index])
+            if PRINT_CONVOLUTION_STEP_TIME: print(f'Convolution blocks {index}: ', time.time() - start)
         if PRINT_MAIN_STEP_TIME: print('Convolution blocks: ', time.time() - start)
 
         if PRINT_MAIN_STEP_TIME: start = time.time()
@@ -315,12 +332,3 @@ class CustomizedConvolutionModel(Model):
         if PRINT_MAIN_STEP_TIME: print('Integrating block: ', time.time() - start)
 
         return images
-
-
-''' Execution '''
-if __name__ == "__main__":
-    model = CustomizedConvolutionModel()
-    model.compile(loss="mean_absolute_percentage_error", optimizer="adam")
-    model.build()
-    print('')
-    model.summary()
