@@ -1,4 +1,4 @@
-# Dynamic-Foot-Pressure-Recognition
+# Foot-Pressure-Recognition
 ---
 [ASVDA - 動態足壓影像辨識](https://aidea-web.tw/topic/d6d8b111-d915-4ea9-89ee-43e148c37f6e)
 
