@@ -20,7 +20,7 @@
      
         > ![](https://i.imgur.com/3ujDIjw.png)
         
-     2. 獨立出顏色：在競賽討論區可看到此壓力圖之 Colormap 並非公式，雖可透過自製 Colormap 並將原圖轉換為純粹的壓力數值，但我時間不夠，所以沒有進行嘗試，不然我認為這會是非常強大的 Input。我做的是將整張圖每個像素為黑色或灰色的部分（數字部分）以上方那一格的顏色替換，並在完成全部後做一次模糊（PIL.ImageFilter.BLUR），然後以此圖做為其中一個 Input。
+     2. 獨立出顏色：在競賽討論區可看到此壓力圖之 Colormap 並非公式，雖可透過自製 Colormap 並將原圖轉換為純粹的壓力數值，但由於時間不足所以我沒有進行嘗試，不然我認為這會是非常強大的 Input。我做的是將整張圖每個像素為黑色或灰色的部分（數字部分）以上方那一格的顏色替換，並在完成全部後做一次模糊（PIL.ImageFilter.BLUR），然後以此圖做為其中一個 Input。
 - 關於經典的深層卷積網路：
   我將三張圖片作為 Input：原圖、裁切後以黑色補齊外框的圖、色彩獨立圖（資料前處理-2.2）。先將三張圖 concatenate 成 (BATCH_SIZE, 120, 400, 9) 的矩陣作為 Input 後，做三層卷積與 MaxPooling2D 將其尺寸縮小至 (BATCH_SIZE, 15, 50, N)，然後做 Flatten、Dropout、BatchNormalization，再進行數層的 Fully connected layers 直至將尺寸縮小到 (BATCH_SIZE, 4)。
 - 關於自製的深層卷積網路：
